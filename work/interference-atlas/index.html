@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Interference Atlas — spectrum planning with provable bounds</title>
+    <meta
+      name="description"
+      content="Case study: a co-channel spectrum planner that models path loss, builds an interference graph, colours it with DSATUR and proves optimality with a maximum clique."
+    />
+    <meta name="theme-color" content="#070b12" />
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="shell header-inner">
+        <a class="brand" href="/" aria-label="Rasuliyon, home">
+          <span class="brand-mark" aria-hidden="true">rs</span>
+          <span class="brand-text">Rasuliyon<span class="brand-dim">/engineering</span></span>
+        </a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="/#work">Work</a>
+          <a href="/#approach">Approach</a>
+          <a href="/#about">About</a>
+          <a class="nav-cta" href="/studio/">Studio <span aria-hidden="true">↗</span></a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <article>
+        <header class="article-hero">
+          <div class="shell">
+            <p class="breadcrumb"><a href="/#work">← All work</a></p>
+            <p class="eyebrow"><span class="pulse" aria-hidden="true"></span>Case study · Systems</p>
+            <h1>Planning spectrum with a proof attached.</h1>
+            <p class="lede">
+              Twenty radio sites, one shared band, and a question with real money behind
+              it: how few channels can carry the traffic without sites drowning each
+              other out? Interference Atlas answers with a graph, a colouring and a bound.
+            </p>
+            <div class="article-meta">
+              <span>2026</span>
+              <span>Python · standard library</span>
+              <span>29 tests</span>
+              <span>MIT</span>
+              <a href="https://github.com/rasuliyonn/interference-atlas">Repository ↗</a>
+              <a href="/studio/">Try the browser planner ↗</a>
+            </div>
+          </div>
+        </header>
+
+        <div class="article">
+          <div class="shell">
+            <div class="prose">
+              <dl class="metrics">
+                <div><dt>Sites planned</dt><dd>20</dd></div>
+                <div><dt>Channels used</dt><dd>9</dd></div>
+                <div><dt>Interference edges</dt><dd>111</dd></div>
+                <div><dt>Cells ≥ 20 dB SINR</dt><dd>94.9%</dd></div>
+              </dl>
+
+              <h2>The problem with “just reuse channels”</h2>
+              <p>
+                Every site in a shared band is a potential interferer. Reuse a channel
+                too aggressively and the network becomes interference-limited: signal
+                strength is fine, but nobody can decode it. Reuse it too timidly and you
+                have burned spectrum for nothing.
+              </p>
+              <p>
+                The honest version of the question is a graph problem. Sites are vertices.
+                Two sites are connected when co-channel leakage at either receiver rises
+                above the noise floor by a protection margin. A valid plan is a proper
+                colouring of that graph — and the number of channels is the number of
+                colours.
+              </p>
+
+              <h2>The model, not a lookup table</h2>
+              <p>
+                Received power comes from a log-distance path loss with a configurable
+                exponent, plus antenna gain. The noise floor is thermal noise in the
+                channel bandwidth:
+              </p>
+              <div class="code-block">
+                <header><span>atlas/model.py</span><span>physics</span></header>
+                <pre><span class="c"># thermal noise: -174 dBm/Hz + 10log10(BW) + NF</span>
+noise = <span class="n">-174.0</span> + <span class="n">10</span> * log10(bandwidth_hz) + noise_figure_db
+
+<span class="c"># log-distance path loss around a 25 m reference</span>
+pl(d) = pl(<span class="n">25</span>) + <span class="n">10</span> * exponent * log10(d / <span class="n">25</span>)
+
+<span class="c"># an edge exists when leakage clears the protection margin</span>
+edge(a, b) = max(rx(a → b), rx(b → a)) - noise >= margin</pre>
+              </div>
+              <p>
+                With a 900 MHz band, 200 kHz channels and a 3.2 exponent, the demo field
+                produces 111 edges across 20 sites — a dense graph, but far from complete.
+                That gap between “everything interferes” and “almost everything” is where
+                planning happens.
+              </p>
+
+              <h2>Two bounds instead of one guess</h2>
+              <p>
+                DSATUR picks the most constrained vertex first and produces an assignment.
+                It is a heuristic, so on its own the channel count is only an upper bound.
+                The planner therefore also computes a maximum clique with Bron–Kerbosch:
+                every vertex in a clique needs its own channel, so the clique size is a
+                lower bound.
+              </p>
+              <p>
+                On the demo field the clique is seven sites and DSATUR uses nine channels.
+                The report says exactly that: <strong>gap of 2</strong>. No pretending the
+                plan is optimal when it has not been proven. This is also why the CLI has
+                a <code>--strict</code> flag that exits non-zero when optimality is
+                unproven — the tool can gate a review pipeline.
+              </p>
+
+              <div class="callout">
+                <p>
+                  The SINR map is computed from the final assignment, including
+                  adjacent-channel isolation (30 dB) and out-of-band isolation (70 dB),
+                  so the picture reflects the plan rather than an optimistic ideal.
+                </p>
+              </div>
+
+              <h2>What the plan actually buys</h2>
+              <p>
+                The same twenty sites, evaluated with every transmitter on channel zero,
+                are mostly interference-limited. After planning across nine channels they
+                are noise-limited almost everywhere:
+              </p>
+              <figure class="figure">
+                <img
+                  src="/assets/interference-atlas-coverage.svg"
+                  alt="Coverage heat map of twenty sites: almost all cells are dark green, indicating SINR above 20 dB."
+                  width="1200"
+                  height="698"
+                  loading="lazy"
+                />
+                <figcaption>
+                  Planned field, 64×32 probes. Dark green is SINR ≥ 20 dB, amber is 0–10 dB.
+                  Generated by the project's own SVG renderer.
+                </figcaption>
+              </figure>
+
+              <div class="code-block">
+                <header><span>terminal</span><span>demo</span></header>
+                <pre>Planned coverage: great 94.9%  good 5.1%  fair 0.0%  outage 0.0%  mean SINR 28.8 dB
+Reuse-1 baseline: great  6.1%  good 20.8% fair 56.5% outage 16.6% mean SINR  6.9 dB</pre>
+              </div>
+
+              <h2>What it does not do</h2>
+              <ul>
+                <li>No terrain, shadowing or antenna azimuths — sites are omnidirectional in two dimensions.</li>
+                <li>Path loss is deterministic; there is no fading margin or Monte-Carlo reliability layer.</li>
+                <li>The colouring is a heuristic. The gap is reported, not optimised away with an exact solver.</li>
+                <li>One channel width for the whole plan, one adjacent-channel isolation value.</li>
+              </ul>
+
+              <h2>Run it</h2>
+              <div class="code-block">
+                <header><span>terminal</span><span>python 3.9+</span></header>
+                <pre>git clone https://github.com/rasuliyonn/interference-atlas
+cd interference-atlas
+python -m unittest discover -s tests -v
+python -m atlas.cli demo --ascii --svg out/coverage.svg</pre>
+              </div>
+
+              <div class="article-footer">
+                <a href="/#work">← All work</a>
+                <a href="/work/convergence-notes/">Next: Convergence Notes →</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-inner">
+        <p>© 2026 Rasuliyon. Static HTML, CSS and JavaScript.</p>
+        <p class="footer-meta"><a href="https://github.com/rasuliyonn">GitHub</a></p>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Atlas Studio — plan a radio field in the browser</title>
+    <meta
+      name="description"
+      content="Interactive co-channel spectrum planner: drag sites, tune propagation, and see the interference graph, DSATUR channel assignment and SINR coverage update live."
+    />
+    <meta name="theme-color" content="#060a11" />
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="src/app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#workspace">Skip to planner</a>
+
+    <header class="topbar">
+      <div class="topbar-left">
+        <a class="back" href="/"><span aria-hidden="true">←</span> Portfolio</a>
+        <div class="app-title">
+          <span class="app-mark" aria-hidden="true">rs</span>
+          <span>Atlas <em>Studio</em></span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span class="badge"><span class="badge-dot" aria-hidden="true"></span>computed in your tab</span>
+        <a class="source-link" href="https://github.com/rasuliyonn/interference-atlas">
+          Model source <span aria-hidden="true">↗</span>
+        </a>
+      </div>
+    </header>
+
+    <main class="workspace" id="workspace">
+      <aside class="controls panel" aria-labelledby="controls-title">
+        <div class="panel-heading">
+          <h2 id="controls-title">Field</h2>
+          <button class="mini-button" id="reset" type="button">Reset</button>
+        </div>
+
+        <label class="field">
+          <span class="field-label">Layout</span>
+          <select id="preset">
+            <option value="small">Small cells · 5 × 4</option>
+            <option value="macro">Macro grid · 4 × 3</option>
+            <option value="dense">Dense grid · 6 × 5</option>
+            <option value="random">Scattered · 14 sites</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span class="field-label">Site power <output id="power-out" for="power">30 dBm</output></span>
+          <input id="power" type="range" min="18" max="42" step="0.5" value="30" />
+        </label>
+
+        <label class="field">
+          <span class="field-label">Antenna gain <output id="gain-out" for="gain">10 dBi</output></span>
+          <input id="gain" type="range" min="0" max="18" step="0.5" value="10" />
+        </label>
+
+        <label class="field">
+          <span class="field-label">Path-loss exponent <output id="exponent-out" for="exponent">3.2</output></span>
+          <input id="exponent" type="range" min="2.2" max="4.2" step="0.1" value="3.2" />
+        </label>
+
+        <label class="field">
+          <span class="field-label">Protection margin <output id="margin-out" for="margin">18 dB</output></span>
+          <input id="margin" type="range" min="6" max="30" step="1" value="18" />
+        </label>
+
+        <fieldset class="toggles">
+          <legend>Layers</legend>
+          <label><input type="checkbox" id="toggle-coverage" checked /> SINR coverage</label>
+          <label><input type="checkbox" id="toggle-graph" checked /> Interference graph</label>
+          <label><input type="checkbox" id="toggle-labels" checked /> Site labels</label>
+        </fieldset>
+
+        <p class="hint">
+          Drag any site to move it. Select a site and use the arrow keys to nudge it by
+          100 m (hold Shift for 500 m).
+        </p>
+      </aside>
+
+      <section class="stage-column">
+        <div class="stage" id="stage">
+          <canvas id="map" tabindex="0" aria-label="Radio planning map. Twenty draggable sites on a SINR coverage field."></canvas>
+          <div class="hud" aria-live="polite">
+            <div class="hud-item">
+              <span>Channels</span>
+              <strong id="hud-channels">–</strong>
+            </div>
+            <div class="hud-item">
+              <span>Edges</span>
+              <strong id="hud-edges">–</strong>
+            </div>
+            <div class="hud-item">
+              <span>Mean SINR</span>
+              <strong id="hud-sinr">–</strong>
+            </div>
+            <div class="hud-item">
+              <span>≥ 20 dB</span>
+              <strong id="hud-coverage">–</strong>
+            </div>
+          </div>
+          <ul class="legend" aria-label="Coverage legend">
+            <li><span class="swatch great"></span>≥ 20 dB</li>
+            <li><span class="swatch good"></span>10–20 dB</li>
+            <li><span class="swatch fair"></span>0–10 dB</li>
+            <li><span class="swatch outage"></span>outage</li>
+          </ul>
+          <div class="tooltip" id="tooltip" hidden></div>
+        </div>
+
+        <div class="results">
+          <dl class="metric-row" id="metric-row">
+            <div><dt>Channel assignment</dt><dd id="m-channels">–</dd></div>
+            <div><dt>Clique lower bound</dt><dd id="m-bound">–</dd></div>
+            <div><dt>Interference edges</dt><dd id="m-edges">–</dd></div>
+            <div><dt>Graph density</dt><dd id="m-density">–</dd></div>
+            <div><dt>Closest co-channel reuse</dt><dd id="m-reuse">–</dd></div>
+            <div><dt>Coverage ≥ 20 dB</dt><dd id="m-coverage">–</dd></div>
+          </dl>
+
+          <div class="lower">
+            <div class="channel-panel">
+              <h3>Channels in use</h3>
+              <ul class="channel-list" id="channel-list"></ul>
+            </div>
+            <div class="actions">
+              <button class="button" id="share" type="button">Copy share link</button>
+              <button class="button" id="export-svg" type="button">Export SVG</button>
+              <button class="button" id="export-json" type="button">Export plan</button>
+              <label class="button file-button">
+                Load plan
+                <input type="file" id="import" accept="application/json" />
+              </label>
+            </div>
+          </div>
+
+          <p class="status" id="status" role="status" aria-live="polite">
+            Model: log-distance path loss, thermal noise at 200 kHz, adjacent-channel
+            isolation 30 dB.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="studio-footer">
+      <p>
+        Same model as the
+        <a href="https://github.com/rasuliyonn/interference-atlas">Python planner</a>.
+        DSATUR gives the channel count; a maximum clique gives the lower bound.
+      </p>
+      <a href="/work/interference-atlas/">Read the case study <span aria-hidden="true">→</span></a>
+    </footer>
+  </body>
+</html>

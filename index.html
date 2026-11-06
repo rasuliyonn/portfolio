@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rasuliyon — systems that show their work</title>
+    <meta
+      name="description"
+      content="Independent engineering portfolio: spectrum planning with provable bounds, CRDT synchronisation with fuzzed convergence, and tools that explain every decision."
+    />
+    <meta name="theme-color" content="#070b12" />
+    <meta property="og:title" content="Rasuliyon — systems that show their work" />
+    <meta
+      property="og:description"
+      content="Spectrum planners with optimality bounds. CRDT engines fuzzed against network partitions. Interfaces that expose the model."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="assets/styles.css" />
+    <script type="module" src="assets/app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <div class="shell header-inner">
+        <a class="brand" href="/" aria-label="Rasuliyon, home">
+          <span class="brand-mark" aria-hidden="true">rs</span>
+          <span class="brand-text">Rasuliyon<span class="brand-dim">/engineering</span></span>
+        </a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="#work">Work</a>
+          <a href="#approach">Approach</a>
+          <a href="#about">About</a>
+          <a class="nav-cta" href="/studio/">Studio <span aria-hidden="true">↗</span></a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero">
+        <div class="hero-glow" aria-hidden="true"></div>
+        <div class="shell hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow"><span class="pulse" aria-hidden="true"></span>Independent systems engineering</p>
+            <h1>Software that shows its&nbsp;own work.</h1>
+            <p class="lede">
+              I build engines where the answer arrives with evidence: a spectrum plan
+              with a proven optimality bound, a CRDT fuzzed against random partitions,
+              a merge tool that names every conflict instead of hiding it.
+            </p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="#work">Selected work</a>
+              <a class="button button-ghost" href="https://github.com/rasuliyonn" rel="me">
+                GitHub <span aria-hidden="true">↗</span>
+              </a>
+            </div>
+            <dl class="hero-stats">
+              <div>
+                <dt>Runtime dependencies</dt>
+                <dd>0</dd>
+              </div>
+              <div>
+                <dt>Tests across projects</dt>
+                <dd>60+</dd>
+              </div>
+              <div>
+                <dt>Source</dt>
+                <dd>Open</dd>
+              </div>
+            </dl>
+          </div>
+
+          <aside class="hero-panel" aria-labelledby="now-title">
+            <div class="panel-top">
+              <span class="panel-label">Now</span>
+              <span class="panel-live"><span class="pulse" aria-hidden="true"></span>live in browser</span>
+            </div>
+            <h2 id="now-title">Atlas Studio</h2>
+            <p>
+              A radio-planning workbench: drag sites, change the propagation model and
+              watch the interference graph, channel assignment and SINR map respond.
+            </p>
+            <div class="panel-diagram" aria-hidden="true">
+              <canvas id="hero-canvas" width="360" height="180"></canvas>
+            </div>
+            <a class="panel-link" href="/studio/">
+              Open the planner <span aria-hidden="true">→</span>
+            </a>
+            <dl class="panel-stats">
+              <div><dt>Channels</dt><dd id="panel-channels">9</dd></div>
+              <div><dt>Edges</dt><dd id="panel-edges">111</dd></div>
+              <div><dt>Mean SINR</dt><dd id="panel-sinr">28.8 dB</dd></div>
+            </dl>
+          </aside>
+        </div>
+      </section>
+
+      <section id="work" class="section work">
+        <div class="shell">
+          <div class="section-head">
+            <div>
+              <p class="kicker">01 — Selected systems</p>
+              <h2>Built to be inspected.</h2>
+            </div>
+            <p class="section-note">
+              Each project ships with tests, CI, a real README and an explicit list of
+              what it does not do.
+            </p>
+          </div>
+
+          <div class="filters" id="filters" role="group" aria-label="Filter projects by domain">
+            <button class="filter is-active" data-filter="all" type="button">All</button>
+            <button class="filter" data-filter="Systems" type="button">Systems</button>
+            <button class="filter" data-filter="Data" type="button">Data</button>
+            <button class="filter" data-filter="Interfaces" type="button">Interfaces</button>
+          </div>
+
+          <div class="work-grid" id="work-grid" aria-live="polite">
+            <noscript>
+              <p>
+                The project grid needs JavaScript. Browse the repositories directly on
+                <a href="https://github.com/rasuliyonn">GitHub</a>.
+              </p>
+            </noscript>
+          </div>
+        </div>
+      </section>
+
+      <section id="approach" class="section approach">
+        <div class="shell">
+          <div class="section-head">
+            <div>
+              <p class="kicker">02 — Approach</p>
+              <h2>Three rules I build by.</h2>
+            </div>
+          </div>
+          <ol class="principles">
+            <li>
+              <span class="principle-index">01</span>
+              <h3>Make the model explicit</h3>
+              <p>
+                Every output traces back to a formula, an invariant or a bound. If the
+                channel count cannot be proven minimal, the tool reports the gap instead
+                of implying certainty.
+              </p>
+            </li>
+            <li>
+              <span class="principle-index">02</span>
+              <h3>Attack the adversarial path</h3>
+              <p>
+                Partitions, reordered operations, deletes that overtake inserts,
+                interrupted merges. The interesting bugs live where the happy path ends,
+                so the tests go there first.
+              </p>
+            </li>
+            <li>
+              <span class="principle-index">03</span>
+              <h3>Skip the dependency tax</h3>
+              <p>
+                These engines are standard-library only and small enough to read in an
+                afternoon. Fewer moving parts, clearer failure modes, no supply chain to
+                audit.
+              </p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section studio-band">
+        <div class="shell studio-grid">
+          <div class="studio-copy">
+            <p class="kicker">03 — Interactive</p>
+            <h2>Plan a radio field in the browser.</h2>
+            <p>
+              Atlas Studio is a client-side workbench for co-channel planning. It builds
+              the interference graph, assigns channels with DSATUR, reports the clique
+              lower bound, and paints the SINR map — all from the same model as the
+              command-line planner.
+            </p>
+            <ul class="tick-list">
+              <li>Drag sites and watch the graph re-colour</li>
+              <li>Share a plan as a URL, export SVG or JSON</li>
+              <li>No server round trips: the model runs in your tab</li>
+            </ul>
+            <a class="button button-primary" href="/studio/">Launch Atlas Studio</a>
+          </div>
+          <div class="studio-shot" aria-hidden="true">
+            <div class="shot-bar"><span></span><span></span><span></span></div>
+            <img src="assets/studio-preview.svg" alt="" width="640" height="420" loading="lazy" />
+          </div>
+        </div>
+      </section>
+
+      <section id="about" class="section about">
+        <div class="shell about-grid">
+          <div>
+            <p class="kicker">04 — About</p>
+            <h2>Distributed data, algorithms, interfaces.</h2>
+          </div>
+          <div class="about-copy">
+            <p>
+              I am a software engineer working at the intersection of data systems and
+              interface design. I care about software whose behaviour can be argued
+              about: engines with clear invariants, tools that surface their assumptions,
+              and documentation that tells you where the edges are.
+            </p>
+            <p>
+              Every project here is built from scratch — no framework scaffolding, no
+              generated boilerplate — and published with its test suite and CI.
+            </p>
+            <ul class="chips" aria-label="Technical focus">
+              <li>Python</li>
+              <li>JavaScript / Node</li>
+              <li>Distributed systems</li>
+              <li>Graph algorithms</li>
+              <li>Data visualisation</li>
+              <li>CI &amp; testing</li>
+            </ul>
+            <div class="about-links">
+              <a href="https://github.com/rasuliyonn">github.com/rasuliyonn <span aria-hidden="true">↗</span></a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-inner">
+        <p>© 2026 Rasuliyon. Static HTML, CSS and JavaScript.</p>
+        <p class="footer-meta">
+          <a href="https://github.com/rasuliyonn">GitHub</a>
+          <span aria-hidden="true">·</span>
+          <a href="/studio/">Atlas Studio</a>
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

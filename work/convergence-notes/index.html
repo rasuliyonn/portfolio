@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Convergence Notes — CRDT sync built from scratch</title>
+    <meta
+      name="description"
+      content="Case study: an offline-first note engine built on an RGA sequence, an observed-remove tag set with retired tags, vector-clock delta sync and seeded convergence fuzzing."
+    />
+    <meta name="theme-color" content="#070b12" />
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="shell header-inner">
+        <a class="brand" href="/" aria-label="Rasuliyon, home">
+          <span class="brand-mark" aria-hidden="true">rs</span>
+          <span class="brand-text">Rasuliyon<span class="brand-dim">/engineering</span></span>
+        </a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="/#work">Work</a>
+          <a href="/#approach">Approach</a>
+          <a href="/#about">About</a>
+          <a class="nav-cta" href="/studio/">Studio <span aria-hidden="true">↗</span></a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <article>
+        <header class="article-hero">
+          <div class="shell">
+            <p class="breadcrumb"><a href="/#work">← All work</a></p>
+            <p class="eyebrow"><span class="pulse" aria-hidden="true"></span>Case study · Data</p>
+            <h1>Editing together, apart.</h1>
+            <p class="lede">
+              Two people edit the same note on a train and a plane. Both go offline. When
+              they reconnect, nothing is lost and both screens show the same text — without
+              a server deciding who wins.
+            </p>
+            <div class="article-meta">
+              <span>2026</span>
+              <span>JavaScript · Node 20+</span>
+              <span>31 tests</span>
+              <span>MIT</span>
+              <a href="https://github.com/rasuliyonn/convergence-notes">Repository ↗</a>
+            </div>
+          </div>
+        </header>
+
+        <div class="article">
+          <div class="shell">
+            <div class="prose">
+              <dl class="metrics">
+                <div><dt>Unit tests</dt><dd>31</dd></div>
+                <div><dt>Fuzz steps</dt><dd>800</dd></div>
+                <div><dt>Replicas converged</dt><dd>4/4</dd></div>
+                <div><dt>Runtime deps</dt><dd>0</dd></div>
+              </dl>
+
+              <h2>Three data types, three problems</h2>
+              <p>
+                “Merge two notes” is really three separate consistency problems: character
+                order, tag membership and a scalar title. Each needs a different CRDT, and
+                each has a classic failure mode that only shows up under concurrency.
+              </p>
+              <ul>
+                <li><strong>Text</strong> needs a total order that every replica derives identically.</li>
+                <li><strong>Tags</strong> need add/remove semantics that do not resurrect deleted values.</li>
+                <li><strong>Title</strong> needs a deterministic last-writer-wins rule.</li>
+              </ul>
+
+              <h2>RGA: characters as a tree, not an array</h2>
+              <p>
+                Every character is a node with a unique <code>(site, counter)</code> id and
+                a parent anchor. Children of one anchor sort by counter then site,
+                descending. That sort is the whole trick: both replicas compute the same
+                reading order from the same set of nodes, even when the inserts arrived in
+                a different order.
+              </p>
+              <div class="code-block">
+                <header><span>src/rga.js</span><span>ordering</span></header>
+                <pre><span class="c">// deterministic sibling order: newest first, site as the tie-break</span>
+children.sort((a, b) =&gt;
+  a.counter !== b.counter ? b.counter - a.counter : (a.site &lt; b.site ? <span class="n">1</span> : <span class="n">-1</span>)
+);
+
+<span class="c">// deletion is a tombstone, so anchors never disappear</span>
+deleteNode(doc, id) { doc.nodes.get(id).deleted = <span class="n">true</span>; }</pre>
+              </div>
+              <p>
+                Tombstones are what make the sequence stable: a character deleted on one
+                replica remains a valid anchor for a concurrent insert on another. The cost
+                is memory, and the README says so instead of hiding it.
+              </p>
+
+              <h2>The OR-Set bug most implementations ship</h2>
+              <p>
+                A naive observed-remove set deletes the whole entry on removal. Merge it
+                with a stale replica and the old tags come back from the dead. This engine
+                keeps <em>retired</em> tags per value and recomputes live membership as
+                <code>(live ∪ live) − (retired ∪ retired)</code>. A concurrent add still
+                wins; an observed removal stays removed forever.
+              </p>
+              <div class="code-block">
+                <header><span>src/orset.js</span><span>merge</span></header>
+                <pre><span class="c">// union both sides, then subtract everything either side retired</span>
+for (const [value, entry] of right) {
+  target.live.add(...entry.live);
+  target.retired.add(...entry.retired);
+}
+for (const tag of target.retired) target.live.delete(tag);</pre>
+              </div>
+
+              <h2>Delta sync, not full state</h2>
+              <p>
+                Each operation carries its author and a monotonic sequence number. A peer
+                sends only operations the other vector clock has not seen, so once two
+                replicas are in sync a second exchange transfers exactly zero operations.
+                Clocks also answer causality directly: <code>equal</code>,
+                <code>before</code>, <code>after</code> or <code>concurrent</code>.
+              </p>
+              <p>
+                Delivery is assumed unreliable. An insert whose anchor has not arrived is
+                buffered and drained when the parent shows up; a delete that overtakes its
+                insert leaves a tombstone that wins later. Both paths have tests.
+              </p>
+
+              <h2>Fuzzing the schedule, not just the data</h2>
+              <p>
+                Unit tests cover the rules. The interesting failures come from timing, so
+                the fuzzer generates a seeded schedule of edits and partial pairwise syncs,
+                then a full mesh sync twice. Every replica must end with a byte-identical
+                canonical state.
+              </p>
+              <div class="code-block">
+                <header><span>terminal</span><span>node bin/notes.js --fuzz 800</span></header>
+                <pre>seed 20261106 · 800 steps · 4 replicas · 298 inserts, 131 deletes,
+73 tag ops, 68 renames, 168 partial syncs
+converged: true</pre>
+              </div>
+              <p>
+                The suite runs twenty additional seeds at 130 steps each, plus a
+                state-merge associativity check: merging three snapshots in different
+                groupings must produce the same document.
+              </p>
+
+              <div class="callout">
+                <p>
+                  The demo deliberately deletes “offline ” on one replica while inserting
+                  “Today ” on the other. Both edits survive, in a deterministic order, with
+                  no coordination and no lost keystrokes.
+                </p>
+              </div>
+
+              <h2>What it does not do</h2>
+              <ul>
+                <li>Tombstones are never garbage-collected; documents grow with edit history.</li>
+                <li>Plain text only — no rich-text attributes, cursors or presence.</li>
+                <li>No network transport or persistence layer; the log is in memory.</li>
+                <li>Snapshot merges assume a consistent snapshot per replica.</li>
+              </ul>
+
+              <h2>Run it</h2>
+              <div class="code-block">
+                <header><span>terminal</span><span>node 20+</span></header>
+                <pre>git clone https://github.com/rasuliyonn/convergence-notes
+cd convergence-notes
+node --test
+node bin/notes.js          # partitioned replicas, then convergence
+node bin/notes.js --fuzz 800</pre>
+              </div>
+
+              <div class="article-footer">
+                <a href="/work/interference-atlas/">← Previous: Interference Atlas</a>
+                <a href="/#work">All work →</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-inner">
+        <p>© 2026 Rasuliyon. Static HTML, CSS and JavaScript.</p>
+        <p class="footer-meta"><a href="https://github.com/rasuliyonn">GitHub</a></p>
+      </div>
+    </footer>
+  </body>
+</html>

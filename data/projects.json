@@ -1,0 +1,30 @@
+[
+  {
+    "repo": "interference-atlas",
+    "name": "Interference Atlas",
+    "kind": "Systems",
+    "year": "2026",
+    "tagline": "Co-channel spectrum planning with provable bounds.",
+    "summary": "Models path loss and noise, builds the interference graph, colours it with DSATUR, and uses a maximum clique to prove whether the channel count is minimal. Renders SINR coverage as SVG.",
+    "stack": ["Python", "DSATUR", "SINR"],
+    "tests": 29,
+    "deps": 0,
+    "href": "/work/interference-atlas/",
+    "repoUrl": "https://github.com/rasuliyonn/interference-atlas",
+    "status": "Published"
+  },
+  {
+    "repo": "convergence-notes",
+    "name": "Convergence Notes",
+    "kind": "Data",
+    "year": "2026",
+    "tagline": "Offline-first text sync that survives partitions.",
+    "summary": "An RGA character tree, an observed-remove tag set with retired tags, vector-clock delta sync and snapshot merges — validated by seeded fuzzing across random network partitions.",
+    "stack": ["JavaScript", "CRDT", "Vector clocks"],
+    "tests": 31,
+    "deps": 0,
+    "href": "/work/convergence-notes/",
+    "repoUrl": "https://github.com/rasuliyonn/convergence-notes",
+    "status": "Published"
+  }
+]
